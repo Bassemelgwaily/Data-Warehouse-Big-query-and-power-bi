@@ -1,0 +1,379 @@
+Bronze Layer DDL
+
+CREATE SCHEMA IF NOT EXISTS `seraphic-port-499416-n7.RealState`
+OPTIONS (
+  location = "US",
+  description = "Bronze layer - raw ingestion من ملف الإكسل بتاع مشروع real_estate_marketing_case"
+);
+
+-- ---------------------------------------------------------------------
+-- 1) Projects
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState.projects` (
+  project_id            STRING,
+  project_name          STRING,
+  location              STRING,
+  developer_name        STRING,
+  launch_date           STRING,
+  delivery_year         STRING,
+  unit_types_available  STRING,
+  _ingested_at          TIMESTAMP,
+  _source_file          STRING
+);
+
+-- ---------------------------------------------------------------------
+-- 2) Units
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState.units` (
+  unit_id          STRING,
+  project_id       STRING,
+  unit_type        STRING,
+  area_sqm         STRING,
+  bedrooms         STRING,
+  bathrooms        STRING,
+  floor            STRING,
+  finishing_type   STRING,
+  list_price_egp   STRING,
+  status           STRING,
+  _ingested_at     TIMESTAMP,
+  _source_file     STRING
+);
+
+-- ---------------------------------------------------------------------
+-- 3) Brokers
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState.brokers` (
+  broker_id             STRING,
+  broker_name           STRING,
+  agency_name           STRING,
+  phone                 STRING,
+  region                STRING,
+  join_date             STRING,
+  commission_rate_pct   STRING,
+  status                STRING,
+  _ingested_at          TIMESTAMP,
+  _source_file          STRING
+);
+
+-- ---------------------------------------------------------------------
+-- 4) Marketing Campaigns
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState.marketing_campaigns` (
+  campaign_id               STRING,
+  campaign_name             STRING,
+  channel                   STRING,
+  target_project_id         STRING,
+  start_date                STRING,
+  end_date                  STRING,
+  budget_egp                STRING,
+  status                    STRING,
+  leads_generated           STRING,
+  customers_who_bought      STRING,
+  cost_per_lead_egp         STRING,
+  cost_per_customer_egp     STRING,
+  lead_to_customer_rate_pct STRING,
+  _ingested_at              TIMESTAMP,
+  _source_file              STRING
+);
+
+-- ---------------------------------------------------------------------
+-- 5) Customers
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState.customers` (
+  customer_id         STRING,
+  customer_name       STRING,
+  phone               STRING,
+  city                STRING,
+  lead_source         STRING,
+  registration_date   STRING,
+  campaign_id         STRING,
+  _ingested_at        TIMESTAMP,
+  _source_file        STRING
+);
+
+-- ---------------------------------------------------------------------
+-- 6) Sales
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState.sales` (
+  sale_id                 STRING,
+  unit_id                 STRING,
+  project_id              STRING,
+  customer_id             STRING,
+  broker_id               STRING,
+  sale_date               STRING,
+  sale_price_egp          STRING,
+  payment_method          STRING,
+  down_payment_pct        STRING,
+  installment_years       STRING,
+  commission_amount_egp   STRING,
+  commission_status       STRING,
+  sale_status             STRING,
+  _ingested_at            TIMESTAMP,
+  _source_file            STRING
+);
+
+-- ---------------------------------------------------------------------
+-- 7) Date Dimension
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState.date_dim` (
+  date            STRING,
+  year            STRING,
+  month           STRING,
+  month_name_ar   STRING,
+  month_year      STRING,
+  quarter         STRING,
+  day             STRING,
+  day_name_ar     STRING,
+  week_of_year    STRING,
+  is_weekend      STRING,
+  _ingested_at    TIMESTAMP,
+  _source_file    STRING
+);
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Silver Layer 
+
+CREATE SCHEMA IF NOT EXISTS `seraphic-port-499416-n7.RealState_Silver`
+OPTIONS (location = "US");
+
+-- ---------------------------------------------------------------------
+-- 1) Projects
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Silver.projects` AS
+SELECT
+  project_id,
+  TRIM(project_name)              AS project_name,
+  TRIM(location)                  AS location,
+  TRIM(developer_name)            AS developer_name,
+  SAFE.PARSE_DATE('%Y-%m-%d', launch_date) AS launch_date,
+  SAFE_CAST(delivery_year AS INT64)        AS delivery_year,
+  TRIM(unit_types_available)      AS unit_types_available
+FROM `seraphic-port-499416-n7.RealState.projects`
+WHERE project_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------
+-- 2) Units
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Silver.units` AS
+SELECT
+  unit_id,
+  project_id,
+  TRIM(unit_type)                    AS unit_type,
+  SAFE_CAST(area_sqm AS FLOAT64)     AS area_sqm,
+  SAFE_CAST(bedrooms AS INT64)       AS bedrooms,
+  SAFE_CAST(bathrooms AS INT64)      AS bathrooms,
+  TRIM(floor)                        AS floor,          
+  TRIM(finishing_type)               AS finishing_type,
+  SAFE_CAST(list_price_egp AS FLOAT64) AS list_price_egp,
+  TRIM(status)                       AS status
+FROM `seraphic-port-499416-n7.RealState.units`
+WHERE unit_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------
+-- 3) Brokers
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Silver.brokers` AS
+SELECT
+  broker_id,
+  TRIM(broker_name)                  AS broker_name,
+  TRIM(agency_name)                  AS agency_name,
+  TRIM(phone)                        AS phone,           
+  TRIM(region)                       AS region,
+  SAFE.PARSE_DATE('%Y-%m-%d', join_date) AS join_date,
+  SAFE_CAST(commission_rate_pct AS FLOAT64) AS commission_rate_pct,
+  TRIM(status)                       AS status
+FROM `seraphic-port-499416-n7.RealState.brokers`
+WHERE broker_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------
+-- 4) Marketing Campaigns
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Silver.marketing_campaigns` AS
+SELECT
+  campaign_id,
+  TRIM(campaign_name)                AS campaign_name,
+  TRIM(channel)                      AS channel,
+  TRIM(target_project_id)            AS target_project_id,
+  SAFE.PARSE_DATE('%Y-%m-%d', start_date) AS start_date,
+  SAFE.PARSE_DATE('%Y-%m-%d', end_date)   AS end_date,
+  SAFE_CAST(budget_egp AS FLOAT64)              AS budget_egp,
+  TRIM(status)                                  AS status,
+  SAFE_CAST(leads_generated AS INT64)           AS leads_generated,
+  SAFE_CAST(customers_who_bought AS INT64)      AS customers_who_bought,
+  SAFE_CAST(cost_per_lead_egp AS FLOAT64)       AS cost_per_lead_egp,
+  SAFE_CAST(cost_per_customer_egp AS FLOAT64)   AS cost_per_customer_egp,
+  SAFE_CAST(lead_to_customer_rate_pct AS FLOAT64) AS lead_to_customer_rate_pct
+FROM `seraphic-port-499416-n7.RealState.marketing_campaigns`
+WHERE campaign_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------
+-- 5) Customers
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Silver.customers` AS
+SELECT
+  customer_id,
+  TRIM(customer_name)                AS customer_name,
+  TRIM(phone)                        AS phone,
+  TRIM(city)                         AS city,
+  TRIM(lead_source)                  AS lead_source,
+  SAFE.PARSE_DATE('%Y-%m-%d', registration_date) AS registration_date,
+  TRIM(campaign_id)                  AS campaign_id
+FROM `seraphic-port-499416-n7.RealState.customers`
+WHERE customer_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------
+-- 6) Sales
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Silver.sales` AS
+SELECT
+  sale_id,
+  unit_id,
+  project_id,
+  customer_id,
+  broker_id,
+  SAFE.PARSE_DATE('%Y-%m-%d', sale_date)      AS sale_date,
+  SAFE_CAST(sale_price_egp AS FLOAT64)        AS sale_price_egp,
+  TRIM(payment_method)                        AS payment_method,
+  SAFE_CAST(down_payment_pct AS FLOAT64)      AS down_payment_pct,
+  SAFE_CAST(installment_years AS INT64)       AS installment_years,
+  SAFE_CAST(commission_amount_egp AS FLOAT64) AS commission_amount_egp,
+  TRIM(commission_status)                     AS commission_status,
+  TRIM(sale_status)                           AS sale_status
+FROM `seraphic-port-499416-n7.RealState.sales`
+WHERE sale_id IS NOT NULL;
+
+-- ---------------------------------------------------------------------
+-- 7) Date dimension
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Silver.date_dim` AS
+SELECT
+  SAFE.PARSE_DATE('%Y-%m-%d', date)  AS date,
+  SAFE_CAST(year AS INT64)           AS year,
+  SAFE_CAST(month AS INT64)          AS month,
+  TRIM(month_name_ar)                AS month_name_ar,
+  TRIM(month_year)                   AS month_year,
+  TRIM(quarter)                      AS quarter,
+  SAFE_CAST(day AS INT64)            AS day,
+  TRIM(day_name_ar)                  AS day_name_ar,
+  SAFE_CAST(week_of_year AS INT64)   AS week_of_year,
+  SAFE_CAST(is_weekend AS BOOL)      AS is_weekend
+FROM `seraphic-port-499416-n7.RealState.date_dim`
+WHERE date IS NOT NULL;
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Gold Layer (Star Schema)
+
+CREATE SCHEMA IF NOT EXISTS `seraphic-port-499416-n7.RealState_Gold_Star`
+OPTIONS (location = "US");
+
+-- ---------------------------------------------------------------------
+-- FACT: كل صف = عملية بيع واحدة (228 صف)
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Gold_Star.fact_sales` AS
+SELECT
+  sale_id,
+  unit_id,
+  project_id,
+  customer_id,
+  broker_id,           -- ممكن تكون 'بدون بروكر (بيع مباشر)'
+  sale_date,
+  sale_price_egp,
+  payment_method,
+  down_payment_pct,
+  installment_years,
+  commission_amount_egp,
+  commission_status,
+  sale_status
+FROM `seraphic-port-499416-n7.RealState_Silver.sales`;
+
+-- ---------------------------------------------------------------------
+-- DIM: المشاريع
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Gold_Star.dim_project` AS
+SELECT
+  project_id,
+  project_name,
+  location,
+  developer_name,
+  launch_date,
+  delivery_year,
+  unit_types_available
+FROM `seraphic-port-499416-n7.RealState_Silver.projects`;
+
+-- ---------------------------------------------------------------------
+-- DIM: الوحدات (فيها كل الوحدات، مش بس اللي اتباعت — عشان تقدر تحسب
+-- نسبة الإشغال Sell-through Rate بمقارنة اللي في الفاكت بكل الوحدات)
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Gold_Star.dim_unit` AS
+SELECT
+  unit_id,
+  project_id,
+  unit_type,
+  area_sqm,
+  bedrooms,
+  bathrooms,
+  floor,
+  finishing_type,
+  list_price_egp,
+  status
+FROM `seraphic-port-499416-n7.RealState_Silver.units`;
+
+-- ---------------------------------------------------------------------
+-- DIM: العملاء (كل الـ 1500 عميل — مش بس اللي اشتروا — عشان تقدر تحسب
+-- معدل التحويل بمقارنة العملاء اللي في الفاكت بكل قاعدة العملاء)
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Gold_Star.dim_customer` AS
+SELECT
+  customer_id,
+  customer_name,
+  phone,
+  city,
+  lead_source,
+  registration_date,
+  campaign_id            -- الحملة اللي جابته، أو 'بدون حملة (مصدر عضوي)'
+FROM `seraphic-port-499416-n7.RealState_Silver.customers`;
+
+-- ---------------------------------------------------------------------
+-- DIM: البروكرز (بيشمل صف وهمي "بدون بروكر" عشان يتربط بالفاكت من غير
+-- ما نخسر عمليات البيع المباشر)
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Gold_Star.dim_broker` AS
+SELECT
+  broker_id, broker_name, agency_name, phone, region, join_date,
+  commission_rate_pct, status
+FROM `seraphic-port-499416-n7.RealState_Silver.brokers`
+
+UNION ALL
+
+SELECT
+  'بدون بروكر (بيع مباشر)' AS broker_id,
+  'بدون بروكر (بيع مباشر)' AS broker_name,
+  NULL AS agency_name, NULL AS phone, NULL AS region,
+  NULL AS join_date, NULL AS commission_rate_pct, NULL AS status;
+
+-- ---------------------------------------------------------------------
+-- DIM: الحملات التسويقية
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Gold_Star.dim_campaign` AS
+SELECT
+  campaign_id, campaign_name, channel, target_project_id,
+  start_date, end_date, budget_egp, status
+FROM `seraphic-port-499416-n7.RealState_Silver.marketing_campaigns`
+
+UNION ALL
+
+SELECT
+  'بدون حملة (مصدر عضوي)' AS campaign_id,
+  'بدون حملة (مصدر عضوي)' AS campaign_name,
+  NULL AS channel, NULL AS target_project_id,
+  NULL AS start_date, NULL AS end_date, NULL AS budget_egp, NULL AS status;
+
+-- ---------------------------------------------------------------------
+-- DIM: التاريخ (يومي متصل — نفس الجدول اللي عملناه قبل كده، بنعيد نسخه هنا)
+-- ---------------------------------------------------------------------
+CREATE OR REPLACE TABLE `seraphic-port-499416-n7.RealState_Gold_Star.dim_date` AS
+SELECT *
+FROM `seraphic-port-499416-n7.RealState_Silver.date_dim`
+WHERE date BETWEEN '2024-01-01' AND '2026-12-31';
